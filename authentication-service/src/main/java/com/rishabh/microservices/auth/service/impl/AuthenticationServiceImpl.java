@@ -26,6 +26,7 @@ import com.rishabh.microservices.auth.repository.OtpVerificationRepository;
 import com.rishabh.microservices.auth.security.CustomUserDetails;
 import com.rishabh.microservices.auth.security.JwtService;
 import com.rishabh.microservices.auth.service.AuthenticationService;
+import com.rishabh.microservices.auth.service.EmailService;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -52,20 +53,23 @@ public class AuthenticationServiceImpl implements AuthenticationService {
     private final SecureRandom secureRandom;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final EmailService emailService;
 
-    // @Lazy on AuthenticationManager breaks the potential Spring Security initialization cycle.
     public AuthenticationServiceImpl(IdentityRepository identityRepository,
+
                                      OtpVerificationRepository otpVerificationRepository,
                                      BCryptPasswordEncoder passwordEncoder,
                                      SecureRandom secureRandom,
                                      AuthenticationManager authenticationManager,
-                                     JwtService jwtService) {
+                                     JwtService jwtService,
+                                     EmailService emailService) {
         this.identityRepository = identityRepository;
         this.otpVerificationRepository = otpVerificationRepository;
         this.passwordEncoder = passwordEncoder;
         this.secureRandom = secureRandom;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.emailService = emailService;
     }
 
     @Override
@@ -104,6 +108,9 @@ public class AuthenticationServiceImpl implements AuthenticationService {
 
         // CascadeType.ALL on Identity.otpVerifications persists both atomically
         identityRepository.save(identity);
+
+        // Send generated raw OTP via Brevo transactional email; rawOtp is never stored
+        emailService.sendOtpEmail(normalizedEmail, rawOtp);
 
         return MessageResponseDto.builder()
                 .message("Registration successful. Please verify your email.")
@@ -179,10 +186,14 @@ public class AuthenticationServiceImpl implements AuthenticationService {
         identity.getOtpVerifications().add(newOtp);
         identityRepository.save(identity);
 
+        // Send generated raw OTP via Brevo transactional email; rawOtp is never stored
+        emailService.sendOtpEmail(normalizedEmail, rawOtp);
+
         return MessageResponseDto.builder()
                 .message("A new OTP has been sent to your email.")
                 .build();
     }
+
 
     @Override
     @Transactional

@@ -53,7 +53,14 @@ public class GlobalExceptionHandler {
         return MessageResponseDto.builder().message(ex.getMessage()).build();
     }
 
+    @ExceptionHandler(EmailSendException.class)
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public MessageResponseDto handleEmailSendException(EmailSendException ex) {
+        return MessageResponseDto.builder().message(ex.getMessage()).build();
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
+
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public MessageResponseDto handleValidationException(MethodArgumentNotValidException ex) {
         String errorMessage = ex.getBindingResult().getFieldErrors().stream()

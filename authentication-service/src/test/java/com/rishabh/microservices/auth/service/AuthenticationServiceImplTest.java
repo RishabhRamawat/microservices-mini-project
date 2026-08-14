@@ -64,6 +64,9 @@ class AuthenticationServiceImplTest {
     @Mock
     private com.rishabh.microservices.auth.security.JwtService jwtService;
 
+    @Mock
+    private com.rishabh.microservices.auth.service.EmailService emailService;
+
     // Real encoder and SecureRandom; mocking BCrypt would undermine the security contract
     private final BCryptPasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
     private final SecureRandom secureRandom = new SecureRandom();
@@ -74,8 +77,9 @@ class AuthenticationServiceImplTest {
     void setUp() {
         // Inject real beans and mocks manually
         authenticationService = new AuthenticationServiceImpl(
-                identityRepository, otpVerificationRepository, passwordEncoder, secureRandom, authenticationManager, jwtService);
+                identityRepository, otpVerificationRepository, passwordEncoder, secureRandom, authenticationManager, jwtService, emailService);
     }
+
 
     // ─── Shared Helpers ───────────────────────────────────────────────────────────
 
@@ -324,7 +328,30 @@ class AuthenticationServiceImplTest {
             assertThat(method.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))
                     .isTrue();
         }
+
+        @Test
+        @DisplayName("16. Successful registration calls EmailService with normalized email and 6-digit OTP")
+        void register_callsEmailServiceWithNormalizedEmailAndGeneratedOtp() {
+            when(identityRepository.findByEmail("user@example.com")).thenReturn(Optional.empty());
+            stubSaveReturnsArgument();
+
+            authenticationService.register(requestFor("  USER@EXAMPLE.COM  "));
+
+            ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
+            verify(emailService).sendOtpEmail(emailCaptor.capture(), otpCaptor.capture());
+
+            assertThat(emailCaptor.getValue()).isEqualTo("user@example.com");
+            assertThat(otpCaptor.getValue()).matches("^\\d{6}$");
+
+            // Verify raw OTP is never stored in DB, only BCrypt hash is persisted
+            Identity savedIdentity = captureSavedIdentity();
+            String storedHash = savedIdentity.getOtpVerifications().get(0).getOtpHash();
+            assertThat(storedHash).isNotEqualTo(otpCaptor.getValue());
+            assertThat(passwordEncoder.matches(otpCaptor.getValue(), storedHash)).isTrue();
+        }
     }
+
 
     // ═════════════════════════════════════════════════════════════════════════════
     // OTP Verification Tests (Milestone 5)
@@ -650,7 +677,32 @@ class AuthenticationServiceImplTest {
             assertThat(method.isAnnotationPresent(org.springframework.transaction.annotation.Transactional.class))
                     .isTrue();
         }
+
+        @Test
+        @DisplayName("21. Successful resendOtp calls EmailService with normalized email and 6-digit OTP")
+        void resendOtp_callsEmailServiceWithNormalizedEmailAndGeneratedOtp() {
+            Identity identity = unverifiedIdentity();
+            when(identityRepository.findByEmail("user@example.com")).thenReturn(Optional.of(identity));
+            when(identityRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+            authenticationService.resendOtp(resendRequest("  USER@EXAMPLE.COM  "));
+
+            ArgumentCaptor<String> emailCaptor = ArgumentCaptor.forClass(String.class);
+            ArgumentCaptor<String> otpCaptor = ArgumentCaptor.forClass(String.class);
+            verify(emailService).sendOtpEmail(emailCaptor.capture(), otpCaptor.capture());
+
+            assertThat(emailCaptor.getValue()).isEqualTo("user@example.com");
+            assertThat(otpCaptor.getValue()).matches("^\\d{6}$");
+
+            // Verify raw OTP is never stored in DB, only BCrypt hash is persisted
+            ArgumentCaptor<Identity> identityCaptor = ArgumentCaptor.forClass(Identity.class);
+            verify(identityRepository).save(identityCaptor.capture());
+            String storedHash = identityCaptor.getValue().getOtpVerifications().get(0).getOtpHash();
+            assertThat(storedHash).isNotEqualTo(otpCaptor.getValue());
+            assertThat(passwordEncoder.matches(otpCaptor.getValue(), storedHash)).isTrue();
+        }
     }
+
 
     // ═════════════════════════════════════════════════════════════════════════════
     // Password Setup Tests (Milestone 6)
