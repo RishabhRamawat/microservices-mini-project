@@ -1,0 +1,50 @@
+# Build & compiled output
+target/
+**/target/
+build/
+**/build/
+*.class
+*.log
+
+# Maven wrapper executable jar
+.mvn/wrapper/maven-wrapper.jar
+**/.mvn/wrapper/maven-wrapper.jar
+
+# Spring Initializr generated documentation
+HELP.md
+**/HELP.md
+
+# Environment and secrets
+.env
+*.env
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IntelliJ IDEA
+.idea/
+**/.idea/
+*.iml
+*.iws
+*.ipr
+
+# Visual Studio Code
+.vscode/
+**/.vscode/
+
+# Eclipse / Spring Tool Suite
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+# NetBeans
+**/nbproject/private/
+**/nbbuild/
+**/dist/
+**/nbdist/
+**/.nb-gradle/
