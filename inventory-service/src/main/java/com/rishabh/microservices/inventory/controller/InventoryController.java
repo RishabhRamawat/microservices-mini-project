@@ -1,5 +1,6 @@
 package com.rishabh.microservices.inventory.controller;
 
+import com.rishabh.microservices.inventory.dto.InventoryAdjustmentRequest;
 import com.rishabh.microservices.inventory.dto.InventoryRequest;
 import com.rishabh.microservices.inventory.dto.InventoryResponse;
 import com.rishabh.microservices.inventory.service.InventoryService;
@@ -37,5 +38,13 @@ public class InventoryController {
     @ResponseStatus(HttpStatus.OK)
     public InventoryResponse updateInventory(@PathVariable String sku, @RequestBody InventoryRequest request) {
         return inventoryService.updateInventory(sku, request);
+    }
+
+    // Internal endpoint for Order Service to atomically decrement stock for a single SKU
+    @PutMapping("/{sku}/decrement")
+    @ResponseStatus(HttpStatus.OK)
+    public InventoryResponse decrementStock(@PathVariable String sku,
+                                            @RequestBody InventoryAdjustmentRequest request) {
+        return inventoryService.decrementStock(sku, request);
     }
 }
