@@ -16,12 +16,12 @@ services:
       dockerfile: Dockerfile
     image: product-service:1.0
     environment:
-      DB_URL: jdbc:mysql://product-db:3306/product_service?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://mysql:3306/product_service
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     depends_on:
-      product-db:
+      mysql:
         condition: service_healthy
       discovery-server:
         condition: service_started
@@ -34,12 +34,12 @@ services:
       dockerfile: Dockerfile
     image: inventory-service:1.0
     environment:
-      DB_URL: jdbc:mysql://inventory-db:3306/inventory_service?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://mysql:3306/inventory_service
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     depends_on:
-      inventory-db:
+      mysql:
         condition: service_healthy
       discovery-server:
         condition: service_started
@@ -52,12 +52,12 @@ services:
       dockerfile: Dockerfile
     image: order-service:1.0
     environment:
-      DB_URL: jdbc:mysql://order-db:3306/order_service?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://mysql:3306/order_service
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka/
     depends_on:
-      order-db:
+      mysql:
         condition: service_healthy
       discovery-server:
         condition: service_started
@@ -70,7 +70,7 @@ services:
       dockerfile: Dockerfile
     image: authentication-service:1.0
     environment:
-      DB_URL: jdbc:mysql://auth-db:3306/auth_db?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+      DB_URL: jdbc:mysql://mysql:3306/auth_db
       DB_USERNAME: ${DB_USERNAME}
       DB_PASSWORD: ${DB_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
@@ -80,7 +80,7 @@ services:
       BREVO_SENDER_EMAIL: ${BREVO_SENDER_EMAIL}
       BREVO_SENDER_NAME: ${BREVO_SENDER_NAME}
     depends_on:
-      auth-db:
+      mysql:
         condition: service_healthy
       discovery-server:
         condition: service_started
@@ -102,65 +102,17 @@ services:
     networks:
       - microservices-network
 
-  product-db:
+  mysql:
     image: mysql:8.3.0
     environment:
-      MYSQL_DATABASE: product_service
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
     volumes:
-      - product-db-data:/var/lib/mysql
+      - mysql-data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - microservices-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-  order-db:
-    image: mysql:8.3.0
-    environment:
-      MYSQL_DATABASE: order_service
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - order-db-data:/var/lib/mysql
-    networks:
-      - microservices-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-  inventory-db:
-    image: mysql:8.3.0
-    environment:
-      MYSQL_DATABASE: inventory_service
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - inventory-db-data:/var/lib/mysql
-    networks:
-      - microservices-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
-      start_period: 20s
-
-  auth-db:
-    image: mysql:8.3.0
-    environment:
-      MYSQL_DATABASE: auth_db
-      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
-    volumes:
-      - auth-db-data:/var/lib/mysql
-    networks:
-      - microservices-network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}"]
+      test: [ "CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -169,10 +121,7 @@ services:
 
 networks:
   microservices-network:
-
+    driver: bridge
 
 volumes:
-  product-db-data:
-  order-db-data:
-  inventory-db-data:
-  auth-db-data:
+  mysql-data:
